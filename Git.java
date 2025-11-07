@@ -50,4 +50,21 @@ public class Git {
             return null;
         }
     }
+
+    public static void blob(String path) throws IOException {
+        try {
+            String hash = generateHash(path);
+            if (hash == null) {
+                return;
+            }
+            File blob = new File("git/objects/" + hash);
+            if (blob.exists()) {
+                return;
+            }
+            byte[] b = Files.readAllBytes(Paths.get(path));
+            Files.write(blob.toPath(), b);
+        } catch (Exception e) {
+            System.err.println("Error in creating blob");
+        }
+    }
 }
