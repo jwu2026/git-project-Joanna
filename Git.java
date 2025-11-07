@@ -9,12 +9,21 @@ public class Git {
     public static void main(String[] args) throws IOException {
         newRepo();
 
-        // tester
+        // tester for hash
         File f = new File("computer.txt");
         try (FileWriter w = new FileWriter(f)) {
             w.write("computer");
         }
         System.out.println(generateHash("computer.txt"));
+
+        // tester for blob
+        createBlob("computer.txt");
+        System.out.println(verifyBlob(generateHash("computer.txt")));
+        cleanupBlob();
+        System.out.println(verifyBlob(generateHash("computer.txt")));
+        createBlob("computer.txt");
+        System.out.println(verifyBlob(generateHash("computer.txt")));
+        cleanupBlob();
     }
 
     public static void newRepo() throws IOException {
@@ -51,7 +60,7 @@ public class Git {
         }
     }
 
-    public static void blob(String path) throws IOException {
+    public static void createBlob(String path) throws IOException {
         try {
             String hash = generateHash(path);
             if (hash == null) {
@@ -67,4 +76,39 @@ public class Git {
             System.err.println("Error in creating blob");
         }
     }
+
+    public static boolean verifyBlob(String name) {
+        File objects = new File("git/objects");
+        if (!objects.exists()) {
+            return false;
+        }
+        File[] files = objects.listFiles();
+        if (files == null) {
+            return false;
+        }
+        boolean temp = false;
+        for (File file : files) {
+            if (file.getName().equals(name)) {
+                temp = true;
+                break;
+            }
+        }
+        return temp;
+    }
+
+    public static void cleanupBlob() {
+        File objects = new File("git/objects");
+        if (!objects.exists()) {
+            return;
+        }
+        File[] blobs = objects.listFiles();
+        if (blobs != null) {
+            for (File blob : blobs) {
+                if (blob.isFile()) {
+                    blob.delete();
+                }
+            }
+        }
+    }
+
 }
