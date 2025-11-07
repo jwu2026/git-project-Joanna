@@ -1,2 +1,3 @@
 # git-project-Joanna
 GP-2.1.1: The method createFiles programmatically creates and writes to two files. The verify method checks if the files and directories exist. The deleteGit method deletes the created files and directories. Multiple initialization, verify and reset cycles are run in the main to ensure reliability. An edge case is when git/ exists, newRepo method doesn't create it again.
+GP-2.2: The method generateHash reads in a file as string and returns a SHA-1 hash string of the text.
