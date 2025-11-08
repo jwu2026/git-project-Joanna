@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.zip.Deflater;
@@ -162,6 +163,30 @@ public class Git {
         } catch (Exception e) {
             System.out.println("Error with compressing");
             return null;
+        }
+    }
+
+    public static void updateIndex(String path) {
+        try {
+            String hash = generateHash(path);
+            if (hash == null) {
+                return;
+            }
+            File index = new File("git/index");
+            if (!index.exists()) {
+                return;
+            }
+            FileWriter w = new FileWriter(index, true);
+            if (Files.size(index.toPath()) > 0) {
+                byte[] b = Files.readAllBytes(index.toPath());
+                if (b[b.length - 1] != '\n') {
+                    w.write("\n");
+                }
+            }
+            w.write(hash + " " + Paths.get(path).getFileName().toString());
+            w.close();
+        } catch (Exception e) {
+            System.out.println("Error!");
         }
     }
 
