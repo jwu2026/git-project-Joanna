@@ -43,6 +43,9 @@ public class Git {
         System.out.println(verifyBlob(generateHash("computer.txt")));
         cleanupBlob();
         System.out.println(verifyBlob(generateHash("computer.txt")));
+
+        // tester for index
+        indexTester();
     }
 
     public static void newRepo() throws IOException {
@@ -187,6 +190,51 @@ public class Git {
             w.close();
         } catch (Exception e) {
             System.out.println("Error!");
+        }
+    }
+
+    public static void indexTester() {
+        try {
+            Git.newRepo();
+
+            File f1 = new File("F1.txt");
+            File f2 = new File("F2.txt");
+            File f3 = new File("F3.txt");
+            Files.writeString(f1.toPath(), "Switzerland");
+            Files.writeString(f2.toPath(), "Japan");
+            Files.writeString(f3.toPath(), "Italy");
+
+            Git.createBlob("F1.txt");
+            Git.updateIndex("F1.txt");
+            Git.createBlob("F2.txt");
+            Git.updateIndex("F2.txt");
+            Git.createBlob("F3.txt");
+            Git.updateIndex("F3.txt");
+
+            if (!Git.verifyBlob(Git.generateHash("F1.txt")) ||
+                    !Git.verifyBlob(Git.generateHash("F2.txt")) ||
+                    !Git.verifyBlob(Git.generateHash("F3.txt"))) {
+                System.out.println("didn't go thru");
+                return;
+            }
+
+            File index = new File("git/index");
+            if (index.length() == 0) {
+                System.out.println("didn't go thru");
+                return;
+            }
+
+            String text = Files.readString(index.toPath());
+            if (!text.contains(Git.generateHash("F1.txt")) ||
+                    !text.contains(Git.generateHash("F2.txt")) ||
+                    !text.contains(Git.generateHash("F3.txt"))) {
+                System.out.println("didn't go thru");
+                return;
+            }
+
+            System.out.println("Yay");
+        } catch (Exception e) {
+            System.out.println("didn't go thru");
         }
     }
 

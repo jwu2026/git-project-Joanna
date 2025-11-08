@@ -8,3 +8,7 @@ GP-2.3: The method createBlob generates a SHA-1 hash of the file's content, then
 GP-2.3.1: The verifyBlob method checks if a file exists in git/objects and cleanupBlob method deletes all files in the directory.
 
 GP-2.3.2: The compression method uses a Deflater to compress data and returns byte array.
+
+GP-2.4: The updateIndex method adds BLOB and file entries to the index.
+
+GP-2.4.1: The indexTester method creates text files, blobs them and adds entries to index file. It checks if each blob exists, the index isn’t empty and verifies that the index entries match the actual files.
