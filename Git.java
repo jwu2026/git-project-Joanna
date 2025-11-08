@@ -57,7 +57,7 @@ public class Git {
         File HEAD = new File("git/HEAD");
 
         if (git.exists() && objects.exists() && index.exists() && HEAD.exists()) {
-            System.out.println("Git Repository exists");
+            System.out.println("Git Repository Already Exists");
         } else {
             git.mkdir();
             objects.mkdir();
