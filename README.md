@@ -12,3 +12,5 @@ GP-2.3.2: The compression method uses a Deflater to compress data and returns by
 GP-2.4: The updateIndex method adds BLOB and file entries to the index.
 
 GP-2.4.1: The indexTester method creates text files, blobs them and adds entries to index file. It checks if each blob exists, the index isn’t empty and verifies that the index entries match the actual files.
+
+GP-2.4.2: The cleanup method removes all created text files, deletes the blob files stored in the git/objects and deletes entries in git/index file.
