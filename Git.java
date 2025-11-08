@@ -46,6 +46,8 @@ public class Git {
 
         // tester for index
         indexTester();
+
+        cleanup();
     }
 
     public static void newRepo() throws IOException {
@@ -238,4 +240,28 @@ public class Git {
         }
     }
 
+    public static void cleanup() {
+        try {
+            File objects = new File("git/objects");
+            if (objects.exists()) {
+                for (File f : objects.listFiles()) {
+                    f.delete();
+                }
+            }
+            File index = new File("git/index");
+            if (index.exists()) {
+                new FileWriter(index, false).close();
+            }
+            File[] files = new File(".").listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.getName().endsWith(".txt")) {
+                        f.delete();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error in cleaning up");
+        }
+    }
 }
