@@ -1,5 +1,8 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,6 +10,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.zip.Deflater;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Git {
 
@@ -46,7 +52,6 @@ public class Git {
 
         // tester for index
         indexTester();
-
         cleanup();
     }
 
@@ -171,70 +176,70 @@ public class Git {
         }
     }
 
-    public static void updateIndex(String path) {
-        try {
-            String hash = generateHash(path);
-            if (hash == null) {
-                return;
-            }
-            File index = new File("git/index");
-            if (!index.exists()) {
-                return;
-            }
-            FileWriter w = new FileWriter(index, true);
-            if (Files.size(index.toPath()) > 0) {
-                byte[] b = Files.readAllBytes(index.toPath());
-                if (b[b.length - 1] != '\n') {
-                    w.write("\n");
+    public static void updateIndex(String path) throws IOException {
+        String hash = generateHash(path);
+        if (hash == null) {
+            return;
+        }
+        File indexFile = new File("git/index");
+        if (!indexFile.exists()) {
+            return;
+        }
+        Path root = Paths.get("").toAbsolutePath(), filePath = Paths.get(path).toAbsolutePath();
+        String rel = root.relativize(filePath)
+                .toString()
+                .replace(File.separatorChar, '/');
+        String newE = hash + " " + rel, line;
+
+        BufferedReader br = new BufferedReader(new FileReader(indexFile));
+        List<String> lines = new ArrayList<>();
+        boolean found = false;
+        while ((line = br.readLine()) != null) {
+            int idx = line.indexOf(' ');
+            if (idx != -1) {
+                String oldH = line.substring(0, idx), oldP = line.substring(idx + 1);
+                if (oldP.equals(rel)) {
+                    found = true;
+                    if (oldH.equals(hash)) {
+                        br.close();
+                        return;
+                    }
+                    line = newE;
                 }
             }
-            w.write(hash + " " + Paths.get(path).getFileName().toString());
-            w.close();
-        } catch (Exception e) {
-            System.out.println("Error!");
+            lines.add(line);
         }
+        br.close();
+        if (!found) {
+            lines.add(newE);
+        }
+        BufferedWriter bw = new BufferedWriter(new FileWriter(indexFile, false));
+        for (int i = 0; i < lines.size(); i++) {
+            bw.write(lines.get(i));
+            bw.newLine();
+        }
+        bw.close();
     }
 
     public static void indexTester() {
         try {
-            Git.newRepo();
-
-            File f1 = new File("F1.txt");
-            File f2 = new File("F2.txt");
-            File f3 = new File("F3.txt");
-            Files.writeString(f1.toPath(), "Switzerland");
-            Files.writeString(f2.toPath(), "Japan");
-            Files.writeString(f3.toPath(), "Italy");
-
-            Git.createBlob("F1.txt");
-            Git.updateIndex("F1.txt");
-            Git.createBlob("F2.txt");
-            Git.updateIndex("F2.txt");
-            Git.createBlob("F3.txt");
-            Git.updateIndex("F3.txt");
-
-            if (!Git.verifyBlob(Git.generateHash("F1.txt")) ||
-                    !Git.verifyBlob(Git.generateHash("F2.txt")) ||
-                    !Git.verifyBlob(Git.generateHash("F3.txt"))) {
-                System.out.println("didn't go thru");
-                return;
-            }
-
-            File index = new File("git/index");
-            if (index.length() == 0) {
-                System.out.println("didn't go thru");
-                return;
-            }
-
-            String text = Files.readString(index.toPath());
-            if (!text.contains(Git.generateHash("F1.txt")) ||
-                    !text.contains(Git.generateHash("F2.txt")) ||
-                    !text.contains(Git.generateHash("F3.txt"))) {
-                System.out.println("didn't go thru");
-                return;
-            }
-
-            System.out.println("Yay");
+            cleanup();
+            newRepo();
+            Files.createDirectories(Path.of("a"));
+            Files.createDirectories(Path.of("b"));
+            Files.writeString(Path.of("a/hello.txt"), "hola");
+            Files.writeString(Path.of("b/hello.txt"), "hola");
+            createBlob("a/hello.txt");
+            updateIndex("a/hello.txt");
+            createBlob("b/hello.txt");
+            updateIndex("b/hello.txt");
+            Files.writeString(Path.of("hellooooo.txt"), "hola");
+            createBlob("hellooooo.txt");
+            updateIndex("hellooooo.txt");
+            Files.writeString(Path.of("hellooooo.txt"), "hola edited");
+            createBlob("hellooooo.txt");
+            updateIndex("hellooooo.txt");
+            System.out.println(Files.readString(Path.of("git/index")));
         } catch (Exception e) {
             System.out.println("didn't go thru");
         }
