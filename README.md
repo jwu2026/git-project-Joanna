@@ -14,3 +14,7 @@ GP-2.4: The updateIndex method adds BLOB and file entries to the index.
 GP-2.4.1: The indexTester method creates text files, blobs them and adds entries to index file. It checks if each blob exists, the index isn’t empty and verifies that the index entries match the actual files.
 
 GP-2.4.2: The cleanup method removes all created text files, deletes the blob files stored in the git/objects and deletes entries in git/index file.
+
+GP-3.1: The modified updateIndex method changes the index so it now saves the relative path of each file instead of just the name. It also prevents adding the same file twice if nothing changed. If a file was edited, the method replaces the old hash with the new one. If the file is new, it adds it to the index in the correct format.
+
+GP-3.2: The createTree method creates a blob for each file and if it encounters a folder, it recursively calls itself so the subtrees are built. After going through all items, the method puts the contents of the tree into a temporary file, hashes it, stores the tree object in git/objects and returns the hash.

@@ -53,6 +53,10 @@ public class Git {
         // tester for index
         indexTester();
         cleanup();
+
+        // tester for tree
+        treeTester();
+        cleanup();
     }
 
     public static void newRepo() throws IOException {
@@ -269,4 +273,57 @@ public class Git {
             System.out.println("Error in cleaning up");
         }
     }
+
+    public static String createTree(String directoryPath) throws IOException {
+        File dir = new File(directoryPath);
+        File[] children = dir.listFiles();
+        StringBuilder tree = new StringBuilder();
+        if (children == null) {
+            return null;
+        }
+        for (File child : children) {
+            String path = child.getPath();
+            if (child.isFile()) {
+                createBlob(path);
+                String hash = generateHash(path);
+                if (tree.length() > 0) {
+                    tree.append("\n");
+                }
+                tree.append("blob ").append(hash).append(" ").append(path);
+                System.out.println("Added file: " + path);
+            } else if (child.isDirectory()) {
+                String sub = createTree(path);
+                if (tree.length() > 0) {
+                    tree.append("\n");
+                }
+                tree.append("tree ").append(sub).append(" ").append(path);
+                System.out.println("Added directory: " + path);
+            }
+        }
+        File temp = new File(directoryPath + "/tree");
+        BufferedWriter bw = new BufferedWriter(new FileWriter(temp));
+        bw.write(tree.toString());
+        bw.close();
+        String HASH = generateHash(temp.getPath());
+        File TREE = new File("git/objects/" + HASH);
+        Files.write(TREE.toPath(), Files.readAllBytes(temp.toPath()));
+        temp.delete();
+        return HASH;
+    }
+
+    public static void treeTester() {
+        try {
+            cleanup();
+            newRepo();
+            Files.createDirectories(Path.of("x"));
+            Files.createDirectories(Path.of("x/y"));
+            Files.writeString(Path.of("x/a.txt"), "Kyoto");
+            Files.writeString(Path.of("x/y/b.txt"), "Osaka");
+            String hash = createTree("x");
+            System.out.println(Files.readString(Path.of("git/objects/" + hash)));
+        } catch (Exception e) {
+            System.out.println("didn't go thru");
+        }
+    }
+
 }
