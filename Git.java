@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -8,10 +7,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.zip.Deflater;
-import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class Git {
@@ -57,6 +58,37 @@ public class Git {
         // tester for tree
         treeTester();
         cleanup();
+
+        // tester for tree from index
+        treeIndexTester();
+    }
+
+    public static void treeIndexTester() {
+        try {
+            cleanup();
+            newRepo();
+            Files.createDirectories(Path.of("testing/docs"));
+            Files.writeString(Path.of("testing/README.md"), "readme");
+            Files.writeString(Path.of("testing/docs/I.txt"), "I");
+            Files.writeString(Path.of("testing/docs/Love.txt"), "Love");
+            Files.writeString(Path.of("testing/Traveling.txt"), "Traveling");
+            createBlob("testing/README.md");
+            updateIndex("testing/README.md");
+            createBlob("testing/docs/I.txt");
+            updateIndex("testing/docs/I.txt");
+            createBlob("testing/docs/Love.txt");
+            updateIndex("testing/docs/Love.txt");
+            createBlob("testing/Traveling.txt");
+            updateIndex("testing/Traveling.txt");
+            treeIndex();
+            System.out.println(Files.readString(Path.of("git/workingList")));
+            File[] obj = new File("git/objects").listFiles();
+            for (File x : obj) {
+                System.out.println("  " + x.getName());
+            }
+        } catch (Exception e) {
+            System.out.println("treeIndex tester didn't work");
+        }
     }
 
     public static void newRepo() throws IOException {
@@ -282,7 +314,7 @@ public class Git {
             return null;
         }
         for (File child : children) {
-            String path = child.getPath();
+            String path = child.getAbsolutePath();
             if (child.isFile()) {
                 createBlob(path);
                 String hash = generateHash(path);
@@ -326,4 +358,223 @@ public class Git {
         }
     }
 
+    public static void treeIndex() throws IOException {
+        WorkingList();
+        while (SubDirExist()) {
+            String leaf = find();
+            if (leaf.length() == 0) {
+                break;
+            }
+            processDir(leaf);
+        }
+        String root = processDir("");
+        if (root == null) {
+            BufferedWriter FINAL = new BufferedWriter(new FileWriter("git/workingList", false));
+            FINAL.write("");
+            FINAL.close();
+            return;
+        }
+        BufferedWriter FINAL = new BufferedWriter(new FileWriter("git/workingList", false));
+        FINAL.write("tree " + root + " root");
+        FINAL.close();
+    }
+
+    private static void WorkingList() throws IOException {
+        File indexFile = new File("git/index");
+        if (!indexFile.exists()) {
+            BufferedWriter empty = new BufferedWriter(new FileWriter("git/workingList", false));
+            empty.write("");
+            empty.close();
+            return;
+        }
+        BufferedReader indexReader = new BufferedReader(new FileReader(indexFile));
+        ArrayList<String> entries = new ArrayList<String>();
+        while (indexReader.ready()) {
+            String line = indexReader.readLine();
+            if (line == null || line.length() == 0) {
+                continue;
+            }
+            entries.add("blob " + line);
+        }
+        indexReader.close();
+        Collections.sort(entries, new Comparator<String>() {
+            @Override
+            public int compare(String a, String b) {
+                String patha = extractPath(a), pathb = extractPath(b);
+                return patha.compareTo(pathb);
+            }
+        });
+        File workingFile = new File("git/workingList"), parent = workingFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        BufferedWriter out = new BufferedWriter(new FileWriter(workingFile, false));
+        for (int i = 0; i < entries.size(); i++) {
+            if (i > 0) {
+                out.write("\n");
+            }
+            out.write(entries.get(i));
+        }
+        out.close();
+    }
+
+    private static boolean SubDirExist() throws IOException {
+        File workingFile = new File("git/workingList");
+        if (!workingFile.exists()) {
+            return false;
+        }
+        BufferedReader br = new BufferedReader(new FileReader(workingFile));
+        boolean found = false;
+        while (br.ready()) {
+            String line = br.readLine();
+            if (line == null || line.length() == 0) {
+                continue;
+            }
+            String path = extractPath(line);
+            if (path.indexOf('/') != -1) {
+                found = true;
+                break;
+            }
+        }
+        br.close();
+        return found;
+    }
+
+    private static String find() throws IOException {
+        File wf = new File("git/workingList");
+        if (!wf.exists()) {
+            return "";
+        }
+        BufferedReader br = new BufferedReader(new FileReader(wf));
+        String deepest = "";
+        int max = -100;
+        while (br.ready()) {
+            String line = br.readLine();
+            if (line == null || line.length() == 0) {
+                continue;
+            }
+            String path = extractPath(line), parent = findFolder(path);
+            if (parent.length() == 0) {
+                continue;
+            }
+            int depth = countChar(parent, '/');
+            if (depth > max) {
+                max = depth;
+                deepest = parent;
+            }
+        }
+        br.close();
+        return deepest;
+    }
+
+    private static String processDir(String dirPath) throws IOException {
+        File workingFile = new File("git/workingList");
+        if (!workingFile.exists()) {
+            return null;
+        }
+        BufferedReader br = new BufferedReader(new FileReader(workingFile));
+        ArrayList<String> children = new ArrayList<String>();
+        ArrayList<String> others = new ArrayList<String>();
+        while (br.ready()) {
+            String line = br.readLine();
+            if (line == null || line.length() == 0) {
+                continue;
+            }
+            String path = extractPath(line), parent = findFolder(path);
+            if (parent.equals(dirPath)) {
+                children.add(line);
+            } else {
+                others.add(line);
+            }
+        }
+        br.close();
+        if (children.size() == 0) {
+            return null;
+        }
+        Collections.sort(children, new Comparator<String>() {
+            @Override
+            public int compare(String a, String b) {
+                return extractPath(a).compareTo(extractPath(b));
+            }
+        });
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < children.size(); i++) {
+            String line = children.get(i);
+            builder.append(extractType(line)).append(" ");
+            builder.append(extractSha(line)).append(" ");
+            builder.append(last(extractPath(line)));
+            if (i < children.size() - 1) {
+                builder.append("\n");
+            }
+        }
+        String tree = builder.toString();
+        File temp = File.createTempFile("treeobj", ".txt");
+        BufferedWriter treeWriter = new BufferedWriter(new FileWriter(temp));
+        treeWriter.write(tree);
+        treeWriter.close();
+        String treeSHA = generateHash(temp.getPath());
+        Path objDir = Path.of("git/objects");
+        if (!Files.exists(objDir))
+            Files.createDirectories(objDir);
+
+        File finalObj = new File("git/objects/" + treeSHA);
+        if (finalObj.exists())
+            finalObj.delete();
+        temp.renameTo(finalObj);
+        File tempWL = File.createTempFile("tempWL", ".txt");
+        BufferedWriter bw = new BufferedWriter(new FileWriter(tempWL, false));
+        if (dirPath.equals("")) {
+            bw.write("tree " + treeSHA + " root");
+        } else {
+            for (int i = 0; i < others.size(); i++) {
+                if (i > 0)
+                    bw.write("\n");
+                bw.write(others.get(i));
+            }
+            if (others.size() > 0) {
+                bw.write("\n");
+            }
+            bw.write("tree " + treeSHA + " " + dirPath);
+        }
+        bw.close();
+        workingFile.delete();
+        tempWL.renameTo(workingFile);
+        return treeSHA;
+    }
+
+    private static String extractType(String line) {
+        return line.substring(0, line.indexOf(' '));
+    }
+
+    private static String extractSha(String line) {
+        return line.substring(line.indexOf(' ') + 1, line.indexOf(' ', line.indexOf(' ') + 1));
+    }
+
+    private static String extractPath(String line) {
+        return line.substring(line.indexOf(' ', line.indexOf(' ') + 1) + 1);
+    }
+
+    private static String findFolder(String path) {
+        if (path.lastIndexOf('/') == -1) {
+            return "";
+        }
+        return path.substring(0, path.lastIndexOf('/'));
+    }
+
+    private static int countChar(String s, char c) {
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) {
+                count += 1;
+            }
+        }
+        return count;
+    }
+
+    private static String last(String path) {
+        if (path.lastIndexOf('/') == -1) {
+            return path;
+        }
+        return path.substring(path.lastIndexOf('/') + 1);
+    }
 }

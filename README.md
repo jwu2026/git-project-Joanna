@@ -18,3 +18,5 @@ GP-2.4.2: The cleanup method removes all created text files, deletes the blob fi
 GP-3.1: The modified updateIndex method changes the index so it now saves the relative path of each file instead of just the name. It also prevents adding the same file twice if nothing changed. If a file was edited, the method replaces the old hash with the new one. If the file is new, it adds it to the index in the correct format.
 
 GP-3.2: The createTree method creates a blob for each file and if it encounters a folder, it recursively calls itself so the subtrees are built. After going through all items, the method puts the contents of the tree into a temporary file, hashes it, stores the tree object in git/objects and returns the hash.
+
+GP-3.3: The treeIndex method turns the index into a working list and creates tree entries for each folder as it goes. It keeps shrinking the list until only the root is left, then writes out the final root tree.
