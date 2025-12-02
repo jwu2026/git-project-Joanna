@@ -27,7 +27,7 @@ public class GitWrapper {
      * 
      * @param filePath The path to the file to be staged.
      */
-    public void add(String filePath) throws IOException {
+    public void add(String filePath) {
         // to-do: implement functionality here
         try {
             File file = new File(filePath);
