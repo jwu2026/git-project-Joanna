@@ -24,3 +24,5 @@ GP-3.3: The treeIndex method turns the index into a working list and creates tre
 GP-4.1: The program stages the files correctly and generates blobs and trees based on the index. The root tree file is manually traced and all hashes are verified to ensure that each staged blob is in its correct location within the trees and that the corresponding blob files exist in the objects directory.
 
 GP-4.2: The commit method creates a commit file pointing to the root tree and records author, date, and message for the current repository state. Also adds the previous commit’s hash so all commits are linked together in order.
+
+GP-4.3: The GitWrapper class handles init, add and commit to provide a consistent way to interact with the Git system.
