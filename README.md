@@ -22,3 +22,5 @@ GP-3.2: The createTree method creates a blob for each file and if it encounters 
 GP-3.3: The treeIndex method turns the index into a working list and creates tree entries for each folder as it goes. It keeps shrinking the list until only the root is left, then writes out the final root tree.
 
 GP-4.1: The program stages the files correctly and generates blobs and trees based on the index. The root tree file is manually traced and all hashes are verified to ensure that each staged blob is in its correct location within the trees and that the corresponding blob files exist in the objects directory.
+
+GP-4.2: The commit method creates a commit file pointing to the root tree and records author, date, and message for the current repository state. Also adds the previous commit’s hash so all commits are linked together in order.

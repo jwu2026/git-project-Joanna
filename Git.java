@@ -61,7 +61,10 @@ public class Git {
         // cleanup();
 
         // tester for tree from index
-        treeIndexTester();
+        // treeIndexTester();
+
+        // tester for commit
+        commitTester();
     }
 
     public static void treeIndexTester() {
@@ -578,4 +581,88 @@ public class Git {
         }
         return path.substring(path.lastIndexOf('/') + 1);
     }
+
+    public static String commit(String author, String message) {
+        try {
+            treeIndex();
+            File workinglist = new File("git/workingList");
+            if (!workinglist.exists()) {
+                return null;
+            }
+            BufferedReader wr = new BufferedReader(new FileReader(workinglist));
+            String line = wr.readLine();
+            wr.close();
+            if (line == null || line.length() == 0) {
+                return null;
+            }
+            String[] parts = line.split(" ");
+            if (parts.length < 2) {
+                return null;
+            }
+            String root = parts[1], parent = "";
+            File HEAD = new File("git/HEAD");
+            if (HEAD.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(HEAD));
+                String hLine = reader.readLine();
+                reader.close();
+                if (hLine != null && hLine.trim().length() > 0) {
+                    parent = hLine.trim();
+                }
+            }
+            StringBuilder commit = new StringBuilder();
+            commit.append("tree: ").append(root).append("\n");
+            if (parent.length() > 0) {
+                commit.append("parent: ").append(parent).append("\n");
+            }
+            commit.append("author: ").append(author).append("\n");
+            commit.append("date: ").append(new java.util.Date().toString()).append("\n");
+            commit.append("message: ").append(message);
+            File temp = File.createTempFile("commit", ".txt");
+            BufferedWriter tw = new BufferedWriter(new FileWriter(temp));
+            tw.write(commit.toString());
+            tw.close();
+            String sha = generateHash(temp.getPath());
+            File obj = new File("git/objects/" + sha);
+            temp.renameTo(obj);
+            BufferedWriter hw = new BufferedWriter(new FileWriter(HEAD, false));
+            hw.write(sha);
+            hw.close();
+            System.out.println(sha);
+            return sha;
+
+        } catch (Exception e) {
+            System.out.println("can't make commit");
+            return null;
+        }
+    }
+
+    public static void commitTester() {
+        try {
+            cleanup();
+            newRepo();
+            Files.createDirectories(Path.of("testing/docs"));
+            Files.writeString(Path.of("testing/README.md"), "readme");
+            Files.writeString(Path.of("testing/docs/I.txt"), "I");
+            Files.writeString(Path.of("testing/docs/Love.txt"), "Love");
+
+            createBlob("testing/README.md");
+            updateIndex("testing/README.md");
+            createBlob("testing/docs/I.txt");
+            updateIndex("testing/docs/I.txt");
+            createBlob("testing/docs/Love.txt");
+            updateIndex("testing/docs/Love.txt");
+
+            commit("me", "first");
+
+            Files.writeString(Path.of("testing/README.md"), "readme2");
+            createBlob("testing/README.md");
+            updateIndex("testing/README.md");
+
+            commit("me", "second");
+
+        } catch (Exception e) {
+            System.out.println("commitTester is not working");
+        }
+    }
+
 }
