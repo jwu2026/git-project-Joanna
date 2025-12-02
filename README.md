@@ -20,3 +20,5 @@ GP-3.1: The modified updateIndex method changes the index so it now saves the re
 GP-3.2: The createTree method creates a blob for each file and if it encounters a folder, it recursively calls itself so the subtrees are built. After going through all items, the method puts the contents of the tree into a temporary file, hashes it, stores the tree object in git/objects and returns the hash.
 
 GP-3.3: The treeIndex method turns the index into a working list and creates tree entries for each folder as it goes. It keeps shrinking the list until only the root is left, then writes out the final root tree.
+
+GP-4.1: The program stages the files correctly and generates blobs and trees based on the index. The root tree file is manually traced and all hashes are verified to ensure that each staged blob is in its correct location within the trees and that the corresponding blob files exist in the objects directory.

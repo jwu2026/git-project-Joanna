@@ -21,43 +21,44 @@ public class Git {
 
     public static void main(String[] args) throws IOException {
         newRepo();
-
-        // tester for hash
-        File f = new File("computer.txt");
-        try (FileWriter w = new FileWriter(f)) {
-            w.write("computer");
-        }
-        System.out.println(generateHash("computer.txt"));
-
-        // tester for blob
-        createBlob("computer.txt");
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-        cleanupBlob();
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-        createBlob("computer.txt");
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-        cleanupBlob();
-
-        // tester for streeeeetch blob
-        compress = false;
-        createBlob("computer.txt");
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-        cleanupBlob();
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-
-        compress = true;
-        createBlob("computer.txt");
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-        cleanupBlob();
-        System.out.println(verifyBlob(generateHash("computer.txt")));
-
-        // tester for index
-        indexTester();
         cleanup();
 
-        // tester for tree
-        treeTester();
-        cleanup();
+        // // tester for hash
+        // File f = new File("computer.txt");
+        // try (FileWriter w = new FileWriter(f)) {
+        // w.write("computer");
+        // }
+        // System.out.println(generateHash("computer.txt"));
+
+        // // tester for blob
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+
+        // // tester for streeeeetch blob
+        // compress = false;
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+
+        // compress = true;
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+
+        // // tester for index
+        // indexTester();
+        // cleanup();
+
+        // // tester for tree
+        // treeTester();
+        // cleanup();
 
         // tester for tree from index
         treeIndexTester();
