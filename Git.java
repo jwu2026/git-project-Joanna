@@ -17,6 +17,12 @@ import java.util.List;
 
 public class Git {
 
+    private static final String gitDirectory = "git";
+    private static final String objDirectory = "git/objects";
+    private static final String indexPath = "git/index";
+    private static final String headPath = "git/HEAD";
+    private static final String workinglistPath = "git/workingList";
+
     static boolean compress = false;
 
     public static void main(String[] args) throws IOException {
@@ -85,8 +91,8 @@ public class Git {
             createBlob("testing/Traveling.txt");
             updateIndex("testing/Traveling.txt");
             treeIndex();
-            System.out.println(Files.readString(Path.of("git/workingList")));
-            File[] obj = new File("git/objects").listFiles();
+            System.out.println(Files.readString(Path.of(workinglistPath)));
+            File[] obj = new File(objDirectory).listFiles();
             for (File x : obj) {
                 System.out.println("  " + x.getName());
             }
@@ -96,31 +102,45 @@ public class Git {
     }
 
     public static void newRepo() throws IOException {
-        File git = new File("git");
-        File objects = new File("git/objects");
-        File index = new File("git/index");
-        File HEAD = new File("git/HEAD");
+        File git = new File(gitDirectory);
+        File objects = new File(objDirectory);
+        File index = new File(indexPath);
+        File HEAD = new File(headPath);
 
         if (git.exists() && objects.exists() && index.exists() && HEAD.exists()) {
             System.out.println("Git Repository Already Exists");
-        } else {
-            git.mkdir();
-            objects.mkdir();
-            index.createNewFile();
-            HEAD.createNewFile();
-            System.out.println("Git Repository created");
+            return;
         }
+        if (!git.exists()) {
+            git.mkdir();
+        }
+        if (!objects.exists()) {
+            objects.mkdir();
+        }
+        if (!index.exists()) {
+            index.createNewFile();
+        }
+        if (!HEAD.exists()) {
+            HEAD.createNewFile();
+        }
+        System.out.println("Git Repository Created");
     }
 
-    public static String generateHash(String path) {
-        try {
-            byte[] bytes = Files.readAllBytes(Paths.get(path));
-            if (compress) {
-                bytes = compression(path);
-                if (bytes == null) {
-                    return null;
-                }
+    public static String generateHash(String path) throws IOException {
+        if (!Files.exists(Paths.get(path))) {
+            throw new IOException("Path doesn't exist");
+        }
+        if (Files.isDirectory(Paths.get(path))) {
+            throw new IOException("Path is a directory");
+        }
+        byte[] bytes = Files.readAllBytes(Paths.get(path));
+        if (compress) {
+            bytes = compression(path);
+            if (bytes == null) {
+                return null;
             }
+        }
+        try {
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
             byte[] hb = digest.digest(bytes);
 
@@ -141,25 +161,21 @@ public class Git {
             if (hash == null) {
                 return;
             }
-            File blob = new File("git/objects/" + hash);
+            File blob = new File(objDirectory + "/" + hash);
             if (blob.exists()) {
                 return;
             }
             byte[] b = Files.readAllBytes(Paths.get(path));
-            if (compress) {
-                b = compression(path);
-                if (b == null) {
-                    return;
-                }
-            }
             Files.write(blob.toPath(), b);
+        } catch (IOException e) {
+            throw e;
         } catch (Exception e) {
             System.err.println("Error in creating blob");
         }
     }
 
     public static boolean verifyBlob(String name) {
-        File objects = new File("git/objects");
+        File objects = new File(objDirectory);
         if (!objects.exists()) {
             return false;
         }
@@ -178,7 +194,7 @@ public class Git {
     }
 
     public static void cleanupBlob() {
-        File objects = new File("git/objects");
+        File objects = new File(objDirectory);
         if (!objects.exists()) {
             return;
         }
@@ -195,19 +211,19 @@ public class Git {
     public static byte[] compression(String path) {
         try {
             byte[] bytes = Files.readAllBytes(Paths.get(path));
-            Deflater d = new Deflater();
-            d.setInput(bytes);
-            d.finish();
+            Deflater deflator = new Deflater();
+            deflator.setInput(bytes);
+            deflator.finish();
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
-            int l;
-            while (!d.finished()) {
-                l = d.deflate(buffer);
-                if (l > 0) {
-                    output.write(buffer, 0, l);
+            int written;
+            while (!deflator.finished()) {
+                written = deflator.deflate(buffer);
+                if (written > 0) {
+                    output.write(buffer, 0, written);
                 }
             }
-            d.end();
+            deflator.end();
             return output.toByteArray();
 
         } catch (Exception e) {
@@ -221,7 +237,7 @@ public class Git {
         if (hash == null) {
             return;
         }
-        File indexFile = new File("git/index");
+        File indexFile = new File(indexPath);
         if (!indexFile.exists()) {
             return;
         }
@@ -231,17 +247,17 @@ public class Git {
                 .replace(File.separatorChar, '/');
         String newE = hash + " " + rel, line;
 
-        BufferedReader br = new BufferedReader(new FileReader(indexFile));
+        BufferedReader reader = new BufferedReader(new FileReader(indexFile));
         List<String> lines = new ArrayList<>();
         boolean found = false;
-        while ((line = br.readLine()) != null) {
+        while ((line = reader.readLine()) != null) {
             int idx = line.indexOf(' ');
             if (idx != -1) {
                 String oldH = line.substring(0, idx), oldP = line.substring(idx + 1);
                 if (oldP.equals(rel)) {
                     found = true;
                     if (oldH.equals(hash)) {
-                        br.close();
+                        reader.close();
                         return;
                     }
                     line = newE;
@@ -249,16 +265,17 @@ public class Git {
             }
             lines.add(line);
         }
-        br.close();
+        reader.close();
         if (!found) {
             lines.add(newE);
         }
-        BufferedWriter bw = new BufferedWriter(new FileWriter(indexFile, false));
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(indexFile, false));
         for (int i = 0; i < lines.size(); i++) {
-            bw.write(lines.get(i));
-            bw.newLine();
+            writer.write(lines.get(i));
+            writer.newLine();
         }
-        bw.close();
+        writer.close();
     }
 
     public static void indexTester() {
@@ -279,7 +296,7 @@ public class Git {
             Files.writeString(Path.of("hellooooo.txt"), "hola edited");
             createBlob("hellooooo.txt");
             updateIndex("hellooooo.txt");
-            System.out.println(Files.readString(Path.of("git/index")));
+            System.out.println(Files.readString(Path.of(indexPath)));
         } catch (Exception e) {
             System.out.println("didn't go thru");
         }
@@ -287,13 +304,13 @@ public class Git {
 
     public static void cleanup() {
         try {
-            File objects = new File("git/objects");
+            File objects = new File(objDirectory);
             if (objects.exists()) {
                 for (File f : objects.listFiles()) {
                     f.delete();
                 }
             }
-            File index = new File("git/index");
+            File index = new File(indexPath);
             if (index.exists()) {
                 new FileWriter(index, false).close();
             }
@@ -313,10 +330,14 @@ public class Git {
     public static String createTree(String directoryPath) throws IOException {
         File dir = new File(directoryPath);
         File[] children = dir.listFiles();
+        if (children != null) {
+            java.util.Arrays.sort(children);
+        }
         StringBuilder tree = new StringBuilder();
         if (children == null) {
             return null;
         }
+
         for (File child : children) {
             String path = child.getAbsolutePath();
             if (child.isFile()) {
@@ -325,23 +346,24 @@ public class Git {
                 if (tree.length() > 0) {
                     tree.append("\n");
                 }
-                tree.append("blob ").append(hash).append(" ").append(path);
-                System.out.println("Added file: " + path);
+                tree.append("blob ").append(hash).append(" ").append(child.getName());
+                System.out.println("Added file " + path);
             } else if (child.isDirectory()) {
                 String sub = createTree(path);
                 if (tree.length() > 0) {
                     tree.append("\n");
                 }
-                tree.append("tree ").append(sub).append(" ").append(path);
-                System.out.println("Added directory: " + path);
+                tree.append("tree ").append(sub).append(" ").append(child.getName());
+                System.out.println("Added directory " + path);
             }
         }
+
         File temp = new File(directoryPath + "/tree");
-        BufferedWriter bw = new BufferedWriter(new FileWriter(temp));
-        bw.write(tree.toString());
-        bw.close();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(temp));
+        writer.write(tree.toString());
+        writer.close();
         String HASH = generateHash(temp.getPath());
-        File TREE = new File("git/objects/" + HASH);
+        File TREE = new File(objDirectory + "/" + HASH);
         Files.write(TREE.toPath(), Files.readAllBytes(temp.toPath()));
         temp.delete();
         return HASH;
@@ -356,7 +378,7 @@ public class Git {
             Files.writeString(Path.of("x/a.txt"), "Kyoto");
             Files.writeString(Path.of("x/y/b.txt"), "Osaka");
             String hash = createTree("x");
-            System.out.println(Files.readString(Path.of("git/objects/" + hash)));
+            System.out.println(Files.readString(Path.of(objDirectory + "/" + hash)));
         } catch (Exception e) {
             System.out.println("didn't go thru");
         }
@@ -373,20 +395,29 @@ public class Git {
         }
         String root = processDir("");
         if (root == null) {
-            BufferedWriter FINAL = new BufferedWriter(new FileWriter("git/workingList", false));
-            FINAL.write("");
+            File temp = File.createTempFile("empty", ".txt");
+            new FileWriter(temp, false).close();
+            String empty = generateHash(temp.getPath());
+            File obj = new File(objDirectory + "/" + empty);
+            if (!obj.exists()) {
+                Files.write(obj.toPath(), Files.readAllBytes(temp.toPath()));
+            }
+            temp.delete();
+
+            BufferedWriter FINAL = new BufferedWriter(new FileWriter(workinglistPath, false));
+            FINAL.write("tree " + empty + " root");
             FINAL.close();
             return;
         }
-        BufferedWriter FINAL = new BufferedWriter(new FileWriter("git/workingList", false));
+        BufferedWriter FINAL = new BufferedWriter(new FileWriter(workinglistPath, false));
         FINAL.write("tree " + root + " root");
         FINAL.close();
     }
 
     private static void WorkingList() throws IOException {
-        File indexFile = new File("git/index");
+        File indexFile = new File(indexPath);
         if (!indexFile.exists()) {
-            BufferedWriter empty = new BufferedWriter(new FileWriter("git/workingList", false));
+            BufferedWriter empty = new BufferedWriter(new FileWriter(workinglistPath, false));
             empty.write("");
             empty.close();
             return;
@@ -401,6 +432,7 @@ public class Git {
             entries.add("blob " + line);
         }
         indexReader.close();
+
         Collections.sort(entries, new Comparator<String>() {
             @Override
             public int compare(String a, String b) {
@@ -408,7 +440,7 @@ public class Git {
                 return patha.compareTo(pathb);
             }
         });
-        File workingFile = new File("git/workingList"), parent = workingFile.getParentFile();
+        File workingFile = new File(workinglistPath), parent = workingFile.getParentFile();
         if (parent != null && !parent.exists()) {
             parent.mkdirs();
         }
@@ -423,14 +455,14 @@ public class Git {
     }
 
     private static boolean SubDirExist() throws IOException {
-        File workingFile = new File("git/workingList");
+        File workingFile = new File(workinglistPath);
         if (!workingFile.exists()) {
             return false;
         }
-        BufferedReader br = new BufferedReader(new FileReader(workingFile));
+        BufferedReader reader = new BufferedReader(new FileReader(workingFile));
         boolean found = false;
-        while (br.ready()) {
-            String line = br.readLine();
+        while (reader.ready()) {
+            String line = reader.readLine();
             if (line == null || line.length() == 0) {
                 continue;
             }
@@ -440,20 +472,20 @@ public class Git {
                 break;
             }
         }
-        br.close();
+        reader.close();
         return found;
     }
 
     private static String find() throws IOException {
-        File wf = new File("git/workingList");
-        if (!wf.exists()) {
+        File workinglist = new File(workinglistPath);
+        if (!workinglist.exists()) {
             return "";
         }
-        BufferedReader br = new BufferedReader(new FileReader(wf));
+        BufferedReader reader = new BufferedReader(new FileReader(workinglist));
         String deepest = "";
         int max = -100;
-        while (br.ready()) {
-            String line = br.readLine();
+        while (reader.ready()) {
+            String line = reader.readLine();
             if (line == null || line.length() == 0) {
                 continue;
             }
@@ -467,20 +499,20 @@ public class Git {
                 deepest = parent;
             }
         }
-        br.close();
+        reader.close();
         return deepest;
     }
 
     private static String processDir(String dirPath) throws IOException {
-        File workingFile = new File("git/workingList");
+        File workingFile = new File(workinglistPath);
         if (!workingFile.exists()) {
             return null;
         }
-        BufferedReader br = new BufferedReader(new FileReader(workingFile));
+        BufferedReader reader = new BufferedReader(new FileReader(workingFile));
         ArrayList<String> children = new ArrayList<String>();
         ArrayList<String> others = new ArrayList<String>();
-        while (br.ready()) {
-            String line = br.readLine();
+        while (reader.ready()) {
+            String line = reader.readLine();
             if (line == null || line.length() == 0) {
                 continue;
             }
@@ -491,7 +523,7 @@ public class Git {
                 others.add(line);
             }
         }
-        br.close();
+        reader.close();
         if (children.size() == 0) {
             return null;
         }
@@ -517,30 +549,31 @@ public class Git {
         treeWriter.write(tree);
         treeWriter.close();
         String treeSHA = generateHash(temp.getPath());
-        Path objDir = Path.of("git/objects");
-        if (!Files.exists(objDir))
+        Path objDir = Path.of(objDirectory);
+        if (!Files.exists(objDir)) {
             Files.createDirectories(objDir);
-
-        File finalObj = new File("git/objects/" + treeSHA);
-        if (finalObj.exists())
-            finalObj.delete();
-        temp.renameTo(finalObj);
+        }
+        File finalObj = new File(objDirectory + "/" + treeSHA);
+        if (!finalObj.exists()) {
+            Files.write(finalObj.toPath(), Files.readAllBytes(temp.toPath()));
+        }
+        temp.delete();
         File tempWL = File.createTempFile("tempWL", ".txt");
-        BufferedWriter bw = new BufferedWriter(new FileWriter(tempWL, false));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tempWL, false));
         if (dirPath.equals("")) {
-            bw.write("tree " + treeSHA + " root");
+            writer.write("tree " + treeSHA + " root");
         } else {
             for (int i = 0; i < others.size(); i++) {
                 if (i > 0)
-                    bw.write("\n");
-                bw.write(others.get(i));
+                    writer.write("\n");
+                writer.write(others.get(i));
             }
             if (others.size() > 0) {
-                bw.write("\n");
+                writer.write("\n");
             }
-            bw.write("tree " + treeSHA + " " + dirPath);
+            writer.write("tree " + treeSHA + " " + dirPath);
         }
-        bw.close();
+        writer.close();
         workingFile.delete();
         tempWL.renameTo(workingFile);
         return treeSHA;
@@ -585,13 +618,13 @@ public class Git {
     public static String commit(String author, String message) {
         try {
             treeIndex();
-            File workinglist = new File("git/workingList");
+            File workinglist = new File(workinglistPath);
             if (!workinglist.exists()) {
                 return null;
             }
-            BufferedReader wr = new BufferedReader(new FileReader(workinglist));
-            String line = wr.readLine();
-            wr.close();
+            BufferedReader reader1 = new BufferedReader(new FileReader(workinglist));
+            String line = reader1.readLine();
+            reader1.close();
             if (line == null || line.length() == 0) {
                 return null;
             }
@@ -600,7 +633,7 @@ public class Git {
                 return null;
             }
             String root = parts[1], parent = "";
-            File HEAD = new File("git/HEAD");
+            File HEAD = new File(headPath);
             if (HEAD.exists()) {
                 BufferedReader reader = new BufferedReader(new FileReader(HEAD));
                 String hLine = reader.readLine();
@@ -609,24 +642,26 @@ public class Git {
                     parent = hLine.trim();
                 }
             }
+
             StringBuilder commit = new StringBuilder();
             commit.append("tree: ").append(root).append("\n");
-            if (parent.length() > 0) {
-                commit.append("parent: ").append(parent).append("\n");
-            }
+            commit.append("parent: ").append(parent).append("\n");
             commit.append("author: ").append(author).append("\n");
             commit.append("date: ").append(new java.util.Date().toString()).append("\n");
             commit.append("message: ").append(message);
+
             File temp = File.createTempFile("commit", ".txt");
-            BufferedWriter tw = new BufferedWriter(new FileWriter(temp));
-            tw.write(commit.toString());
-            tw.close();
+            BufferedWriter tempWrite = new BufferedWriter(new FileWriter(temp));
+            tempWrite.write(commit.toString());
+            tempWrite.close();
             String sha = generateHash(temp.getPath());
-            File obj = new File("git/objects/" + sha);
-            temp.renameTo(obj);
-            BufferedWriter hw = new BufferedWriter(new FileWriter(HEAD, false));
-            hw.write(sha);
-            hw.close();
+            File obj = new File(objDirectory + "/" + sha);
+            new File(objDirectory).mkdirs();
+            Files.write(obj.toPath(), Files.readAllBytes(temp.toPath()));
+            temp.delete();
+            BufferedWriter head = new BufferedWriter(new FileWriter(HEAD, false));
+            head.write(sha);
+            head.close();
             System.out.println(sha);
             return sha;
 

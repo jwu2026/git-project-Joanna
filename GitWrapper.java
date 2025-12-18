@@ -31,13 +31,16 @@ public class GitWrapper {
         // to-do: implement functionality here
         try {
             File file = new File(filePath);
-            if (!file.exists() || file.isDirectory()) {
-                throw new IOException("doesn't exist or isn't a file");
+            if (!file.exists()) {
+                throw new IOException("file doesn't exist");
+            }
+            if (file.isDirectory()) {
+                throw new IOException("isn't a file");
             }
             Git.createBlob(filePath);
             Git.updateIndex(filePath);
         } catch (IOException e) {
-            System.out.println("add didn't work");
+            throw new RuntimeException(e);
         }
     };
 
