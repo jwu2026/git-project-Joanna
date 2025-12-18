@@ -28,6 +28,48 @@ public class Git {
     public static void main(String[] args) throws IOException {
         newRepo();
         cleanup();
+
+        // // tester for hash
+        // File f = new File("computer.txt");
+        // try (FileWriter w = new FileWriter(f)) {
+        // w.write("computer");
+        // }
+        // System.out.println(generateHash("computer.txt"));
+
+        // // tester for blob
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+
+        // // tester for streeeeetch blob
+        // compress = false;
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+
+        // compress = true;
+        // createBlob("computer.txt");
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+        // cleanupBlob();
+        // System.out.println(verifyBlob(generateHash("computer.txt")));
+
+        // // tester for index
+        // indexTester();
+        // cleanup();
+
+        // // tester for tree
+        // treeTester();
+        // cleanup();
+
+        // tester for tree from index
+        // treeIndexTester();
+
+        // tester for commit
         commitTester();
     }
 
@@ -394,8 +436,7 @@ public class Git {
         Collections.sort(entries, new Comparator<String>() {
             @Override
             public int compare(String a, String b) {
-                String patha = a.substring(a.indexOf(' ', a.indexOf(' ') + 1) + 1),
-                        pathb = b.substring(b.indexOf(' ', b.indexOf(' ') + 1) + 1);
+                String patha = extractPath(a), pathb = extractPath(b);
                 return patha.compareTo(pathb);
             }
         });
@@ -425,7 +466,7 @@ public class Git {
             if (line == null || line.length() == 0) {
                 continue;
             }
-            String path = line.substring(line.indexOf(' ', line.indexOf(' ') + 1) + 1);
+            String path = extractPath(line);
             if (path.indexOf('/') != -1) {
                 found = true;
                 break;
@@ -448,8 +489,7 @@ public class Git {
             if (line == null || line.length() == 0) {
                 continue;
             }
-            String path = line.substring(line.indexOf(' ', line.indexOf(' ') + 1) + 1),
-                    parent = (path.lastIndexOf('/') == -1) ? "" : path.substring(0, path.lastIndexOf('/'));
+            String path = extractPath(line), parent = findFolder(path);
             if (parent.length() == 0) {
                 continue;
             }
@@ -476,8 +516,7 @@ public class Git {
             if (line == null || line.length() == 0) {
                 continue;
             }
-            String path = line.substring(line.indexOf(' ', line.indexOf(' ') + 1) + 1),
-                    parent = (path.lastIndexOf('/') == -1) ? "" : path.substring(0, path.lastIndexOf('/'));
+            String path = extractPath(line), parent = findFolder(path);
             if (parent.equals(dirPath)) {
                 children.add(line);
             } else {
@@ -491,16 +530,15 @@ public class Git {
         Collections.sort(children, new Comparator<String>() {
             @Override
             public int compare(String a, String b) {
-                return a.substring(a.indexOf(' ', a.indexOf(' ') + 1) + 1)
-                        .compareTo(b.substring(b.indexOf(' ', b.indexOf(' ') + 1) + 1));
+                return extractPath(a).compareTo(extractPath(b));
             }
         });
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < children.size(); i++) {
             String line = children.get(i);
-            builder.append(line.substring(0, line.indexOf(' '))).append(" ");
-            builder.append(line.substring(line.indexOf(' ') + 1, line.indexOf(' ', line.indexOf(' ') + 1))).append(" ");
-            builder.append(last(line.substring(line.indexOf(' ', line.indexOf(' ') + 1) + 1)));
+            builder.append(extractType(line)).append(" ");
+            builder.append(extractSha(line)).append(" ");
+            builder.append(last(extractPath(line)));
             if (i < children.size() - 1) {
                 builder.append("\n");
             }
@@ -539,6 +577,25 @@ public class Git {
         workingFile.delete();
         tempWL.renameTo(workingFile);
         return treeSHA;
+    }
+
+    private static String extractType(String line) {
+        return line.substring(0, line.indexOf(' '));
+    }
+
+    private static String extractSha(String line) {
+        return line.substring(line.indexOf(' ') + 1, line.indexOf(' ', line.indexOf(' ') + 1));
+    }
+
+    private static String extractPath(String line) {
+        return line.substring(line.indexOf(' ', line.indexOf(' ') + 1) + 1);
+    }
+
+    private static String findFolder(String path) {
+        if (path.lastIndexOf('/') == -1) {
+            return "";
+        }
+        return path.substring(0, path.lastIndexOf('/'));
     }
 
     private static int countChar(String s, char c) {
